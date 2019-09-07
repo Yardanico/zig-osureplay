@@ -1,3 +1,6 @@
+// Based on documentation of the Osu replay format:
+// https://osu.ppy.sh/help/wiki/osu!_File_Formats/Osr_(file_format)/
+
 const std = @import("std");
 const warn = std.debug.warn;
 const pf = @import("parse-float.zig");
@@ -34,9 +37,8 @@ fn readULEB128(comptime T: type, in_stream: var) !T {
 }
 
 fn readString(in_stream: var, alloc: *std.mem.Allocator) ![]u8 {
-    var res: []u8 = undefined;
     const is_str_present = try in_stream.readByte();
-    if (is_str_present == 11) {
+    if (is_str_present == 0x0b) {
         const len = try readULEB128(u64, in_stream);
         var data: []u8 = try alloc.alloc(u8, len);
         try in_stream.readNoEof(data);
@@ -126,40 +128,38 @@ pub const OsuReplay = struct {
         };
         // Read length of LZMA-compressed data
         const in_data_len = try st.readIntLittle(u32);
-        // Allocate and read compressed data into a buffer
+        // Allocate and read compressed data into the buffer
         var lzma_data = try alloc.alloc(u8, in_data_len);
         defer alloc.free(lzma_data);
         try st.readNoEof(lzma_data);
-        // Variables for output from the LZMA decompression
-        var out_data: []u8 = "";
-        defer alloc.free(out_data);
+        // Variables for output from the C function
+        var out_data: []u8 = undefined;
         var out_len: usize = undefined;
-
+        // Decompress LZMA-compressed string using easylzma C library
         const error_code = c.simpleDecompress(c.elzma_file_format.ELZMA_lzma, &lzma_data[0], in_data_len, @ptrCast([*c][*c]u8, &out_data.ptr), &out_len);
         if (error_code != 0) {
             return error.InvalidReplayFile;
         }
         // Create an array list which we will use to hold all parsed ReplayAction objects
         r.replay_data = std.ArrayList(ReplayAction).init(alloc);
-
-        // Iterate over indexes of the string. If we find a comma,
-        // parse a replay action starting from start_entry to i,
-        // then set new start_entry value
+        // Tokenize the string by commas and parse separate items
         var it = std.mem.tokenize(out_data[0..out_len], ",");
         while (it.next()) |item| {
             try r.replay_data.append(try ReplayAction.init(item));
         }
-        alloc.free(it.buffer);
-
+        // Free LZMA decompressed string
+        alloc.free(out_data[0..out_len]);
         r.online_score_id = try st.readIntLittle(i64);
         return r;
     }
 
     fn deinit(self: *OsuReplay) void {
+        // Free all strings (they need to be freed since read_string uses alloc)
         self.alloc.free(self.beatmap_hash);
         self.alloc.free(self.player_name);
         self.alloc.free(self.replay_hash);
         self.alloc.free(self.life_bar_graph);
+        // Free replay_data array list
         self.replay_data.deinit();
     }
 };
@@ -174,12 +174,14 @@ test "Replay parsing" {
     var file = try fs.File.openRead("resources/cookiezi817.osr");
     const file_len = try file.getEndPos();
     var file_data: []u8 = try c_alloc.alloc(u8, file_len);
+    defer c_alloc.free(file_data);
     _ = try file.read(file_data);
     file.close();
 
     var buf_stream = io.SliceInStream.init(file_data);
     const st = &buf_stream.stream;
     var r = try OsuReplay.init(st, c_alloc);
+    defer r.deinit();
 
     expect(r.play_mode == PlayMode.Standard);
     expect(r.game_version == 20151228);
@@ -195,7 +197,4 @@ test "Replay parsing" {
     expect(r.max_combo == 1773);
     expect(r.is_fc == false);
     expect(r.replay_data.len == 16160);
-
-    r.deinit();
-    c_alloc.free(file_data);
 }

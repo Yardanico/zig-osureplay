@@ -3,18 +3,16 @@ const builtin = @import("builtin");
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
+
     const exe = b.addExecutable("osureader", "src/osureader.zig");
     const t = b.addTest("src/osureplay.zig");
    
-
-
     t.setBuildMode(mode);
     exe.setBuildMode(mode);
     
-
-    if (mode == builtin.Mode.ReleaseFast or mode == builtin.Mode.ReleaseSmall) {
-        // Remove debug symbols since we don't need them
-        //exe.strip = true;
+    if (mode == builtin.Mode.ReleaseSmall) {
+        // Remove debug symbols in release-small
+        exe.strip = true;
     }
     // We need the C library because we use easylzma which depends on libc
     t.linkSystemLibrary("c");

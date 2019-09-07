@@ -16,6 +16,10 @@ pub fn main() !void {
             break;
         }
     }
+    if (std.mem.eql(u8, fname, "")) {
+        warn("Please specify replay file: osureader filename.osr\n");
+        std.os.exit(1);
+    }
     warn("Parsing {}\n", fname);
     var file = try fs.File.openRead(fname);
     const file_len = try file.getEndPos();
