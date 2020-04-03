@@ -71,7 +71,7 @@ pub fn parse_float(s: []const u8) !f64 {
     // Integer part
     while (i < s.len and is_digit(s[i])) {
         kdigits += 1;
-        integer = integer * 10 + u64(s[i] - '0');
+        integer = integer * 10 + @intCast(u64, s[i] - '0');
         i += 1;
         while (i < s.len and s[i] == '_') {
             i += 1;
@@ -122,7 +122,7 @@ pub fn parse_float(s: []const u8) !f64 {
             return error.InvalidFloat;
         }
         while (i < s.len and is_digit(s[i])) {
-            exponent = exponent * 10 + i64(s[i] - '0');
+            exponent = exponent * 10 + @intCast(i64, s[i] - '0');
             i += 1;
         }
     }

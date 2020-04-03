@@ -12,7 +12,7 @@ const c = @cImport({
 
 // Taken from std/debug/leb128.zig
 fn readULEB128(comptime T: type, in_stream: var) !T {
-    const ShiftT = @IntType(false, std.math.log2(T.bit_count));
+    const ShiftT = std.meta.IntType(false, std.math.log2(T.bit_count));
 
     var result: T = 0;
     var shift: usize = 0;

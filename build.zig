@@ -6,10 +6,10 @@ pub fn build(b: *Builder) void {
 
     const exe = b.addExecutable("osureader", "src/osureader.zig");
     const t = b.addTest("src/osureplay.zig");
-   
+    
     t.setBuildMode(mode);
     exe.setBuildMode(mode);
-    
+
     if (mode == builtin.Mode.ReleaseSmall) {
         // Remove debug symbols in release-small
         exe.strip = true;
@@ -21,7 +21,7 @@ pub fn build(b: *Builder) void {
     const c_includes = [_][]const u8{
         "src/vendor/easylzma",
         "src/vendor/easylzma/easylzma",
-        "src/vendor/easylzma/pavlov"
+        "src/vendor/easylzma/pavlov",
     };
 
     const c_files = [_][]const u8{
@@ -42,10 +42,10 @@ pub fn build(b: *Builder) void {
         exe.addIncludeDir(c_include);
         t.addIncludeDir(c_include);
     }
-
+    const c_args = &[_][]const u8{};
     for (c_files) |c_file| {
-        exe.addCSourceFile(c_file, [_][]const u8{});
-        t.addCSourceFile(c_file, [_][]const u8{});
+        exe.addCSourceFile(c_file, c_args);
+        t.addCSourceFile(c_file, c_args);
     }
 
     const run_cmd = exe.run();
