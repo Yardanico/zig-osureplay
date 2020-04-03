@@ -171,15 +171,15 @@ test "Replay parsing" {
 
     const expect = std.testing.expect;
 
-    var file = try fs.File.openRead("resources/cookiezi817.osr");
+    var file = try fs.cwd().openFile("resources/cookiezi817.osr", .{});
     const file_len = try file.getEndPos();
     var file_data: []u8 = try c_alloc.alloc(u8, file_len);
     defer c_alloc.free(file_data);
     _ = try file.read(file_data);
     file.close();
 
-    var buf_stream = io.SliceInStream.init(file_data);
-    const st = &buf_stream.stream;
+    var buf_stream = io.fixedBufferStream(file_data);
+    const st = &buf_stream.inStream();
     var r = try OsuReplay.init(st, c_alloc);
     defer r.deinit();
 
